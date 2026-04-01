@@ -26,7 +26,7 @@ export default function CreateEmployeeForm() {
       setClinic("");
     } catch (error) {
       console.error("Error creating employee:", error);
-      setMessage("Failed to create employee.");
+      setMessage(error.message || "Failed to create employee.");
     }
   };
 
