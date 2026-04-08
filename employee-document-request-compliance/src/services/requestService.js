@@ -11,6 +11,15 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { storage } from "../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+function mapSnapshotDocs(snapshot) {
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+}
 
 export async function createRequest({
   employeeId,
@@ -49,15 +58,13 @@ export function subscribeToRequests(callback, onError) {
   return onSnapshot(
     q,
     (snapshot) => {
-      const requests = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      callback(requests);
+      callback(mapSnapshotDocs(snapshot));
     },
     onError
   );
 }
+
+
 
 export function subscribeToEmployeeRequests(employeeId, callback, onError) {
   const q = query(
@@ -69,11 +76,7 @@ export function subscribeToEmployeeRequests(employeeId, callback, onError) {
   return onSnapshot(
     q,
     (snapshot) => {
-      const requests = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      callback(requests);
+      callback(mapSnapshotDocs(snapshot));
     },
     onError
   );
@@ -95,14 +98,49 @@ export async function updateRequestStatus(requestId, newStatus) {
   if (newStatus === "submitted") {
     updates.submittedAt = serverTimestamp();
     updates.approvedAt = null;
+    updates.rejectedReason = "";
   } else if (newStatus === "approved") {
     updates.approvedAt = serverTimestamp();
+    updates.rejectedReason = "";
   } else if (newStatus === "requested") {
     updates.submittedAt = null;
     updates.approvedAt = null;
+    updates.rejectedReason = "";
   } else if (newStatus === "rejected") {
     updates.approvedAt = null;
   }
 
   await updateDoc(requestRef, updates);
+}
+
+export async function submitEmployeeRequest({
+  requestId,
+  employeeId,
+  file,
+  expirationDate = null,
+}) {
+  if (!file) {
+    throw new Error("A file is required.");
+  }
+
+  const safeFileName = `${Date.now()}-${file.name}`;
+  const storagePath = `employee-documents/${employeeId}/${requestId}/${safeFileName}`;
+  const storageRef = ref(storage, storagePath);
+
+  await uploadBytes(storageRef, file);
+
+  const fileUrl = await getDownloadURL(storageRef);
+
+  const requestRef = doc(db, "requests", requestId);
+
+  await updateDoc(requestRef, {
+    status: "submitted",
+    fileUrl,
+    filePath: storagePath,
+    submittedAt: serverTimestamp(),
+    expirationDate: expirationDate || null,
+    updatedAt: serverTimestamp(),
+  });
+
+  return { fileUrl, filePath: storagePath };
 }
