@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
 import {
   subscribeToEmployeeRequests,
-  updateRequestStatus,
   deleteRequest,
 } from "../../services/requestService";
 
-const STATUS_OPTIONS = ["requested", "submitted", "approved", "rejected"];
-
-export default function EmployeeDocuments({ employee, onBack }) {
+export default function EmployeeDocuments({
+  employee,
+  onBack,
+  onViewRequest,
+}) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [updatingId, setUpdatingId] = useState("");
 
   useEffect(() => {
-    if (!employee?.id) return;
+    if (!employee?.id) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
 
     const unsubscribe = subscribeToEmployeeRequests(
       employee.id,
@@ -29,8 +36,10 @@ export default function EmployeeDocuments({ employee, onBack }) {
       }
     );
 
-    return () => unsubscribe();
-  }, [employee]);
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [employee?.id]);
 
   const handleDelete = async (request) => {
     const firstConfirm = window.confirm(
@@ -53,17 +62,16 @@ export default function EmployeeDocuments({ employee, onBack }) {
     }
   };
 
-  const handleStatusChange = async (requestId, newStatus) => {
-    try {
-      setUpdatingId(requestId);
-      await updateRequestStatus(requestId, newStatus);
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("Failed to update request status.");
-    } finally {
-      setUpdatingId("");
-    }
-  };
+  if (!employee) {
+    return (
+      <div style={{ padding: "2rem" }}>
+        <button onClick={onBack} style={{ marginBottom: "1rem" }}>
+          ← Back to Employees
+        </button>
+        <p>No employee selected.</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "2rem" }}>
@@ -110,30 +118,26 @@ export default function EmployeeDocuments({ employee, onBack }) {
           <tbody>
             {requests.map((request) => (
               <tr key={request.id}>
-                <td style={tdStyle}>{request.documentType}</td>
-                <td style={tdStyle}>{request.title}</td>
+                <td style={tdStyle}>{request.documentType || "-"}</td>
+                <td style={tdStyle}>{request.title || "-"}</td>
                 <td style={tdStyle}>
-                  <select
-                    value={request.status}
-                    onChange={(e) =>
-                      handleStatusChange(request.id, e.target.value)
-                    }
-                    disabled={updatingId === request.id}
-                    style={getStatusSelectStyle(request.status)}
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
+                  <span style={getStatusStyle(request.status)}>
+                    {request.status || "requested"}
+                  </span>
                 </td>
                 <td style={tdStyle}>{request.dueDate || "-"}</td>
                 <td style={tdStyle}>
                   {request.expirationRequired ? "Yes" : "No"}
                 </td>
                 <td style={tdStyle}>
-                  <button onClick={() => handleDelete(request)}>Delete</button>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button onClick={() => onViewRequest?.(request.id)}>
+                      View
+                    </button>
+                    <button onClick={() => handleDelete(request)}>
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -144,15 +148,14 @@ export default function EmployeeDocuments({ employee, onBack }) {
   );
 }
 
-function getStatusSelectStyle(status) {
+function getStatusStyle(status) {
   const baseStyle = {
-    padding: "0.35rem 0.6rem",
+    display: "inline-block",
+    padding: "0.3rem 0.6rem",
     borderRadius: "999px",
     fontSize: "0.9rem",
     fontWeight: "600",
     textTransform: "capitalize",
-    border: "1px solid #ccc",
-    outline: "none",
   };
 
   switch (status) {

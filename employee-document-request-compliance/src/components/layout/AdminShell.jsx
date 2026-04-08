@@ -5,10 +5,13 @@ import EmployeesPage from "../../pages/EmployeesPage";
 import RequestsPage from "../../pages/RequestsPage";
 import ViewRequestsPage from "../../pages/ViewRequestsPage";
 import EmployeeDocumentsPage from "../../pages/EmployeeDocumentsPage";
+import ViewRequestPage from "../../pages/ViewRequestpage";
 
 export default function AdminShell() {
   const [currentPage, setCurrentPage] = useState("employees");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [returnPage, setReturnPage] = useState("employees");
 
   function handleViewDocuments(employee) {
     setSelectedEmployee(employee);
@@ -18,6 +21,17 @@ export default function AdminShell() {
   function handleBackToEmployees() {
     setSelectedEmployee(null);
     setCurrentPage("employees");
+  }
+
+  function handleViewRequest(requestId, fromPage = "viewRequests") {
+    setSelectedRequestId(requestId);
+    setReturnPage(fromPage);
+    setCurrentPage("viewRequest");
+  }
+
+  function handleBackFromViewRequest() {
+    setSelectedRequestId(null);
+    setCurrentPage(returnPage);
   }
 
   return (
@@ -30,12 +44,27 @@ export default function AdminShell() {
       )}
 
       {currentPage === "createRequest" && <RequestsPage />}
-      {currentPage === "viewRequests" && <ViewRequestsPage />}
+
+      {currentPage === "viewRequests" && (
+        <ViewRequestsPage
+          onViewRequest={(requestId) => handleViewRequest(requestId, "viewRequests")}
+        />
+      )}
 
       {currentPage === "employeeDocuments" && selectedEmployee && (
         <EmployeeDocumentsPage
           employee={selectedEmployee}
           onBack={handleBackToEmployees}
+          onViewRequest={(requestId) =>
+            handleViewRequest(requestId, "employeeDocuments")
+          }
+        />
+      )}
+
+      {currentPage === "viewRequest" && selectedRequestId && (
+        <ViewRequestPage
+          requestId={selectedRequestId}
+          onBack={handleBackFromViewRequest}
         />
       )}
     </div>
