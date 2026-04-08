@@ -2,16 +2,12 @@ import { useEffect, useState } from "react";
 import {
   subscribeToRequests,
   deleteRequest,
-  updateRequestStatus,
 } from "../../services/requestService";
 
-const STATUS_OPTIONS = ["requested", "submitted", "approved", "rejected"];
-
-export default function RequestsList() {
+export default function RequestsList({ onViewRequest }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [updatingId, setUpdatingId] = useState("");
 
   useEffect(() => {
     const unsubscribe = subscribeToRequests(
@@ -50,18 +46,6 @@ export default function RequestsList() {
     }
   };
 
-  const handleStatusChange = async (requestId, newStatus) => {
-    try {
-      setUpdatingId(requestId);
-      await updateRequestStatus(requestId, newStatus);
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("Failed to update request status.");
-    } finally {
-      setUpdatingId("");
-    }
-  };
-
   if (loading) return <p>Loading requests...</p>;
   if (error) return <p>{error}</p>;
   if (requests.length === 0) return <p>No requests found.</p>;
@@ -97,27 +81,19 @@ export default function RequestsList() {
               <td style={tdStyle}>{request.documentType}</td>
               <td style={tdStyle}>{request.title}</td>
               <td style={tdStyle}>
-                <select
-                  value={request.status}
-                  onChange={(e) =>
-                    handleStatusChange(request.id, e.target.value)
-                  }
-                  disabled={updatingId === request.id}
-                  style={getStatusSelectStyle(request.status)}
-                >
-                  {STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
+                <span style={getStatusStyle(request.status)}>
+                  {request.status}
+                </span>
               </td>
               <td style={tdStyle}>{request.dueDate || "-"}</td>
               <td style={tdStyle}>
                 {request.expirationRequired ? "Yes" : "No"}
               </td>
               <td style={tdStyle}>
-                <button onClick={() => handleDelete(request)}>Delete</button>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button onClick={() => onViewRequest(request.id)}>View</button>
+                  <button onClick={() => handleDelete(request)}>Delete</button>
+                </div>
               </td>
             </tr>
           ))}
@@ -127,15 +103,14 @@ export default function RequestsList() {
   );
 }
 
-function getStatusSelectStyle(status) {
+function getStatusStyle(status) {
   const baseStyle = {
-    padding: "0.35rem 0.6rem",
+    display: "inline-block",
+    padding: "0.3rem 0.6rem",
     borderRadius: "999px",
     fontSize: "0.9rem",
     fontWeight: "600",
     textTransform: "capitalize",
-    border: "1px solid #ccc",
-    outline: "none",
   };
 
   switch (status) {
@@ -145,21 +120,18 @@ function getStatusSelectStyle(status) {
         backgroundColor: "#d4edda",
         color: "#155724",
       };
-
     case "rejected":
       return {
         ...baseStyle,
         backgroundColor: "#f8d7da",
         color: "#721c24",
       };
-
     case "submitted":
       return {
         ...baseStyle,
         backgroundColor: "#fff3cd",
         color: "#856404",
       };
-
     default:
       return {
         ...baseStyle,

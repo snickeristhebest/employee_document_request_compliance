@@ -64,7 +64,25 @@ export function subscribeToRequests(callback, onError) {
   );
 }
 
+export function subscribeToRequestById(requestId, callback, onError) {
+  const requestRef = doc(db, "requests", requestId);
 
+  return onSnapshot(
+    requestRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+
+      callback({
+        id: snapshot.id,
+        ...snapshot.data(),
+      });
+    },
+    onError
+  );
+}
 
 export function subscribeToEmployeeRequests(employeeId, callback, onError) {
   const q = query(
