@@ -43,10 +43,21 @@ export async function createRequest({
     expirationRequired,
     expirationDate: null,
     fileUrl: null,
+    filePath: null,
     submittedAt: null,
     approvedAt: null,
     rejectedReason: "",
     isActive: true,
+
+    reminderConfig: {
+      beforeDueDays: [30, 14, 7, 1],
+      beforeExpirationDays: [30, 14, 7, 1],
+    },
+
+    lastReminderSentAt: null,
+    lastReminderType: "",
+    reminderCount: 0,
+
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
