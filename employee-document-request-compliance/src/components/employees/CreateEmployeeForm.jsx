@@ -7,6 +7,7 @@ export default function CreateEmployeeForm() {
   const [email, setEmail] = useState("");
   const [clinic, setClinic] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("employee");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,9 +19,10 @@ export default function CreateEmployeeForm() {
       !firstName.trim() ||
       !lastName.trim() ||
       !email.trim() ||
-      !password.trim()
+      !password.trim() ||
+      !role.trim()
     ) {
-      setMessage("First name, last name, email, and password are required.");
+      setMessage("First name, last name, email, password, and role are required.");
       return;
     }
 
@@ -33,20 +35,23 @@ export default function CreateEmployeeForm() {
       setIsLoading(true);
 
       await createEmployeeAccount({
-        firstName,
-        lastName,
-        email,
-        clinic,
-        password,
-        role: "employee",
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        clinic: clinic.trim(),
+        password: password.trim(),
+        role,
       });
 
-      setMessage("Employee account created successfully.");
+      setMessage(
+        `${role === "admin" ? "Admin" : "Employee"} account created successfully.`
+      );
       setFirstName("");
       setLastName("");
       setEmail("");
       setClinic("");
       setPassword("");
+      setRole("employee");
     } catch (error) {
       console.error("Create employee account error:", error);
       console.error("Error code:", error.code);
@@ -54,7 +59,7 @@ export default function CreateEmployeeForm() {
       console.error("Error details:", error.details);
 
       setMessage(
-        error.message || error.details || "Failed to create employee account."
+        error.message || error.details || "Failed to create account."
       );
     } finally {
       setIsLoading(false);
@@ -71,6 +76,7 @@ export default function CreateEmployeeForm() {
           placeholder="First name"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
+          autoComplete="given-name"
         />
 
         <input
@@ -78,6 +84,7 @@ export default function CreateEmployeeForm() {
           placeholder="Last name"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
+          autoComplete="family-name"
         />
 
         <input
@@ -85,6 +92,7 @@ export default function CreateEmployeeForm() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
         />
 
         <input
@@ -92,8 +100,14 @@ export default function CreateEmployeeForm() {
           placeholder="Clinic"
           value={clinic}
           onChange={(e) => setClinic(e.target.value)}
+          autoComplete="organization"
         />
-        
+
+        <select value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="employee">Employee</option>
+          <option value="admin">Admin</option>
+        </select>
+
         <input
           type="password"
           placeholder="Temporary password (min 6 chars)"
@@ -103,7 +117,7 @@ export default function CreateEmployeeForm() {
         />
 
         <button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Employee Account"}
+          {isLoading ? "Creating..." : `Create ${role === "admin" ? "Admin" : "Employee"} Account`}
         </button>
       </form>
 
