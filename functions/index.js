@@ -42,14 +42,32 @@ exports.createEmployeeAccount = onCall(
       const role = data.role || "employee";
 
       if (
-        !firstName || !firstName.trim() ||
-      !lastName || !lastName.trim() ||
-      !email || !email.trim() ||
-      !password || !password.trim()
+        !firstName ||
+      !firstName.trim() ||
+      !lastName ||
+      !lastName.trim() ||
+      !email ||
+      !email.trim() ||
+      !password ||
+      !password.trim()
       ) {
         throw new HttpsError(
             "invalid-argument",
             "firstName, lastName, email, and password are required.",
+        );
+      }
+
+      if (!["employee", "admin"].includes(role)) {
+        throw new HttpsError(
+            "invalid-argument",
+            "role must be either 'employee' or 'admin'.",
+        );
+      }
+
+      if (password.trim().length < 6) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Password must be at least 6 characters.",
         );
       }
 
@@ -71,7 +89,11 @@ exports.createEmployeeAccount = onCall(
           role: role,
           employeeId: employeeId,
           isActive: true,
+          mustChangePassword: true,
+          temporaryPasswordCreatedAt: FieldValue.serverTimestamp(),
+          passwordChangedAt: null,
           createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           createdBy: callerUid,
         });
 
@@ -82,8 +104,10 @@ exports.createEmployeeAccount = onCall(
               email: normalizedEmail,
               clinic: normalizedClinic,
               isActive: true,
-              createdAt: FieldValue.serverTimestamp(),
+              role: role,
               authUid: userRecord.uid,
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
             },
             {merge: true},
         );
@@ -93,14 +117,15 @@ exports.createEmployeeAccount = onCall(
           uid: userRecord.uid,
           employeeId: employeeId,
           email: normalizedEmail,
+          role: role,
         };
       } catch (error) {
         console.error("createEmployeeAccount error:", {
-            code: error.code,
-            message: error.message,
-            stack: error.stack,
-            error: error,
-            });
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+          error: error,
+        });
 
         if (error.code === "auth/email-already-exists") {
           throw new HttpsError(
@@ -111,8 +136,8 @@ exports.createEmployeeAccount = onCall(
 
         throw new HttpsError(
             "internal",
-            error.message || "Failed to create employee account."
-            );
+            error.message || "Failed to create employee account.",
+        );
       }
     },
 );
