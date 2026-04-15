@@ -181,21 +181,19 @@ exports.sendScheduledReminders = onSchedule(
         }
 
         for (const candidate of candidates) {
-          const alreadySent = await reminderAlreadySent(
-              request.id,
-              candidate.category,
-              candidate.offsetDays,
-          );
+          const claimed = await claimReminderSend(request, candidate);
 
-          if (alreadySent) {
+          if (!claimed) {
             continue;
           }
 
           const result = await sendReminderEmail(request, candidate);
 
-          await writeReminderHistory(request, candidate, result);
+          await finalizeReminderHistory(request, candidate, result);
 
-          sent += 1;
+          if (result.status === "sent") {
+            sent += 1;
+          }
         }
       }
 
@@ -260,19 +258,19 @@ function buildExpirationReminderCandidates(request, today) {
       }));
 }
 
-async function reminderAlreadySent(requestId, category, offsetDays) {
-  const snapshot = await db
-      .collection("requests")
-      .doc(requestId)
-      .collection("reminderHistory")
-      .where("category", "==", category)
-      .where("offsetDays", "==", offsetDays)
-      .where("status", "==", "sent")
-      .limit(1)
-      .get();
+// async function reminderAlreadySent(requestId, category, offsetDays) {
+//   const snapshot = await db
+//       .collection("requests")
+//       .doc(requestId)
+//       .collection("reminderHistory")
+//       .where("category", "==", category)
+//       .where("offsetDays", "==", offsetDays)
+//       .where("status", "==", "sent")
+//       .limit(1)
+//       .get();
 
-  return !snapshot.empty;
-}
+//   return !snapshot.empty;
+// }
 
 async function sendReminderEmail(request, candidate) {
   const subject = buildReminderSubject(request, candidate);
@@ -306,27 +304,23 @@ async function sendReminderEmail(request, candidate) {
   }
 }
 
-async function writeReminderHistory(request, candidate, result) {
+async function finalizeReminderHistory(request, candidate, result) {
   const requestRef = db.collection("requests").doc(request.id);
-  const historyRef = requestRef.collection("reminderHistory").doc();
+  const reminderKey = `${candidate.category}_${candidate.offsetDays}`;
+  const historyRef = requestRef.collection("reminderHistory").doc(reminderKey);
 
-  await historyRef.set({
-    category: candidate.category,
-    offsetDays: candidate.offsetDays,
-    targetDate: candidate.targetDate,
-    recipientEmail: request.employeeEmail || "",
-    requestStatusAtSend: request.status || "",
+  await historyRef.update({
     subject: result.subject,
     status: result.status,
     errorMessage: result.errorMessage || "",
     sentAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 
-  // Only count successful sends
   if (result.status === "sent") {
     await requestRef.update({
       lastReminderSentAt: FieldValue.serverTimestamp(),
-      lastReminderType: `${candidate.category}_${candidate.offsetDays}`,
+      lastReminderType: reminderKey,
       reminderCount: FieldValue.increment(1),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -399,6 +393,36 @@ function diffDays(fromDateStr, toDateStr) {
   return Math.round((toDate - fromDate) / msPerDay);
 }
 
+async function claimReminderSend(request, candidate) {
+  const requestRef = db.collection("requests").doc(request.id);
+  const reminderKey = `${candidate.category}_${candidate.offsetDays}`;
+  const historyRef = requestRef.collection("reminderHistory").doc(reminderKey);
+
+  try {
+    await historyRef.create({
+      category: candidate.category,
+      offsetDays: candidate.offsetDays,
+      targetDate: candidate.targetDate,
+      recipientEmail: request.employeeEmail || "",
+      requestStatusAtSend: request.status || "",
+      subject: buildReminderSubject(request, candidate),
+      status: "pending",
+      errorMessage: "",
+      createdAt: FieldValue.serverTimestamp(),
+      sentAt: null,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return true;
+  } catch (error) {
+    if (error.code === 6 || error.code === "already-exists") {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
 exports.runReminderScanNow = onCall(
     {region: "us-central1"},
     async (request) => {
@@ -458,19 +482,15 @@ exports.runReminderScanNow = onCall(
         }
 
         for (const candidate of candidates) {
-          const alreadySent = await reminderAlreadySent(
-              requestData.id,
-              candidate.category,
-              candidate.offsetDays,
-          );
+          const claimed = await claimReminderSend(requestData, candidate);
 
-          if (alreadySent) {
+          if (!claimed) {
             continue;
           }
 
           const result = await sendReminderEmail(requestData, candidate);
 
-          await writeReminderHistory(requestData, candidate, result);
+          await finalizeReminderHistory(requestData, candidate, result);
 
           if (result.status === "sent") {
             sent += 1;
