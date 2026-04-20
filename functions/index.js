@@ -258,20 +258,6 @@ function buildExpirationReminderCandidates(request, today) {
       }));
 }
 
-// async function reminderAlreadySent(requestId, category, offsetDays) {
-//   const snapshot = await db
-//       .collection("requests")
-//       .doc(requestId)
-//       .collection("reminderHistory")
-//       .where("category", "==", category)
-//       .where("offsetDays", "==", offsetDays)
-//       .where("status", "==", "sent")
-//       .limit(1)
-//       .get();
-
-//   return !snapshot.empty;
-// }
-
 async function sendReminderEmail(request, candidate) {
   const subject = buildReminderSubject(request, candidate);
   const body = buildReminderBody(request, candidate);
@@ -313,7 +299,7 @@ async function finalizeReminderHistory(request, candidate, result) {
     subject: result.subject,
     status: result.status,
     errorMessage: result.errorMessage || "",
-    sentAt: FieldValue.serverTimestamp(),
+    sentAt: result.status === "sent" ? FieldValue.serverTimestamp() : null,
     updatedAt: FieldValue.serverTimestamp(),
   });
 
@@ -398,29 +384,78 @@ async function claimReminderSend(request, candidate) {
   const reminderKey = `${candidate.category}_${candidate.offsetDays}`;
   const historyRef = requestRef.collection("reminderHistory").doc(reminderKey);
 
-  try {
-    await historyRef.create({
-      category: candidate.category,
-      offsetDays: candidate.offsetDays,
-      targetDate: candidate.targetDate,
-      recipientEmail: request.employeeEmail || "",
-      requestStatusAtSend: request.status || "",
-      subject: buildReminderSubject(request, candidate),
+  const now = Date.now();
+  const staleAfterMs = 10 * 60 * 1000; // 10 minutes
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(historyRef);
+
+    if (!snapshot.exists) {
+      transaction.set(historyRef, {
+        category: candidate.category,
+        offsetDays: candidate.offsetDays,
+        targetDate: candidate.targetDate,
+        recipientEmail: request.employeeEmail || "",
+        requestStatusAtSend: request.status || "",
+        subject: buildReminderSubject(request, candidate),
+        status: "pending",
+        errorMessage: "",
+        retryCount: 0,
+        claimedAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        sentAt: null,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    }
+
+    const data = snapshot.data();
+
+    if (data.status === "sent") {
+      return false;
+    }
+
+    if (data.status === "failed") {
+      transaction.update(historyRef, {
+        status: "pending",
+        errorMessage: "",
+        retryCount: (data.retryCount || 0) + 1,
+        claimedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    }
+
+    if (data.status === "pending") {
+      const claimedAtMs = data.claimedAt?.toMillis?.() || 0;
+      const isStale = now - claimedAtMs > staleAfterMs;
+
+      if (!isStale) {
+        return false;
+      }
+
+      transaction.update(historyRef, {
+        errorMessage: "Recovered stale pending reminder claim.",
+        retryCount: (data.retryCount || 0) + 1,
+        claimedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    }
+
+    transaction.update(historyRef, {
       status: "pending",
       errorMessage: "",
-      createdAt: FieldValue.serverTimestamp(),
-      sentAt: null,
+      retryCount: (data.retryCount || 0) + 1,
+      claimedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
     return true;
-  } catch (error) {
-    if (error.code === 6 || error.code === "already-exists") {
-      return false;
-    }
-
-    throw error;
-  }
+  });
 }
 
 exports.runReminderScanNow = onCall(
