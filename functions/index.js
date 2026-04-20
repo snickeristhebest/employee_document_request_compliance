@@ -264,6 +264,7 @@ async function sendReminderEmail(request, candidate) {
 
   try {
     const apiKey = process.env.SENDGRID_KEY;
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
 
     if (!apiKey || !apiKey.startsWith("SG.")) {
       throw new Error("SENDGRID_KEY is missing or invalid.");
@@ -273,7 +274,7 @@ async function sendReminderEmail(request, candidate) {
 
     await sgMail.send({
       to: request.employeeEmail,
-      from: "nicoh7242@gmail.com",
+      from: fromEmail,
       subject,
       text: body,
     });
