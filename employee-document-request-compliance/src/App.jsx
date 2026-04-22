@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import EmployeeHomePage from "./pages/EmployeeHomePage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 import AdminShell from "./components/layout/AdminShell";
 
 function AppContent() {
@@ -12,6 +14,8 @@ function AppContent() {
     profileError,
     logout,
   } = useAuth();
+
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   if (authLoading) {
     return <p style={{ padding: "2rem" }}>Loading authentication...</p>;
@@ -55,16 +59,36 @@ function AppContent() {
     );
   }
 
+  if (showChangePassword) {
+    return (
+      <ChangePasswordPage onBack={() => setShowChangePassword(false)} />
+    );
+  }
+
+  if (userProfile.mustChangePassword) {
+    return (
+      <div style={{ padding: "2rem", maxWidth: "600px" }}>
+        <h1>Password change required</h1>
+        <p>
+          You are still using a temporary password. Please change it before
+          continuing.
+        </p>
+        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+          <button onClick={() => setShowChangePassword(true)}>
+            Change Password
+          </button>
+          <button onClick={logout}>Logout</button>
+        </div>
+      </div>
+    );
+  }
+
   if (userProfile.role === "admin") {
     return <AdminShell />;
   }
 
   if (userProfile.role === "employee") {
-    return (
-      <div>
-        <EmployeeHomePage />
-      </div>
-    );
+    return <EmployeeHomePage />;
   }
 
   return (
