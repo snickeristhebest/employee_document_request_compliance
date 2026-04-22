@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react";
 import {
-  subscribeToEmployees,
-  deactivateEmployee,
+  subscribeToInactiveEmployees,
+  reactivateEmployee,
+  permanentlyDeleteEmployee,
 } from "../../services/employeeService";
 
-export default function EmployeesList({ onViewDocuments }) {
+export default function InactiveEmployeesList() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const unsubscribe = subscribeToEmployees(
+    const unsubscribe = subscribeToInactiveEmployees(
       (data) => {
         setEmployees(data);
         setLoading(false);
       },
       (err) => {
-        console.error("Error loading employees:", err);
-        setError("Failed to load employees.");
+        console.error("Error loading inactive employees:", err);
+        setError("Failed to load inactive employees.");
         setLoading(false);
       }
     );
@@ -25,28 +26,43 @@ export default function EmployeesList({ onViewDocuments }) {
     return () => unsubscribe();
   }, []);
 
-  const handleDeactivate = async (employee) => {
-    const confirmDeactivate = window.confirm(
-      `Deactivate employee ${employee.firstName} ${employee.lastName}?`
+  async function handleReactivate(employee) {
+    try {
+      await reactivateEmployee(employee.id);
+    } catch (err) {
+      console.error("Reactivate employee error:", err);
+      alert("Failed to reactivate employee.");
+    }
+  }
+
+  async function handlePermanentDelete(employee) {
+    const firstConfirm = window.confirm(
+      `Permanently delete ${employee.firstName} ${employee.lastName}?`
     );
 
-    if (!confirmDeactivate) return;
+    if (!firstConfirm) return;
+
+    const secondConfirm = window.confirm(
+      "This action is irreversible. Are you absolutely sure?"
+    );
+
+    if (!secondConfirm) return;
 
     try {
-      await deactivateEmployee(employee.id);
+      await permanentlyDeleteEmployee(employee.id);
     } catch (err) {
-      console.error("Error deactivating employee:", err);
-      alert("Failed to deactivate employee.");
+      console.error("Permanent delete employee error:", err);
+      alert("Failed to permanently delete employee.");
     }
-  };
+  }
 
-  if (loading) return <p>Loading employees...</p>;
-  if (error) return <p>{error}</p>;
-  if (employees.length === 0) return <p>No employees found.</p>;
+  if (loading) return <p style={{ padding: "2rem" }}>Loading inactive employees...</p>;
+  if (error) return <p style={{ padding: "2rem" }}>{error}</p>;
+  if (employees.length === 0) return <p style={{ padding: "2rem" }}>No inactive employees found.</p>;
 
   return (
-    <div style={{ marginTop: "2rem" }}>
-      <h2>Employees</h2>
+    <div style={{ padding: "2rem" }}>
+      <h1>Inactive Employees</h1>
 
       <table
         style={{
@@ -61,7 +77,6 @@ export default function EmployeesList({ onViewDocuments }) {
             <th style={thStyle}>Last Name</th>
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Clinic</th>
-            <th style={thStyle}>Active</th>
             <th style={thStyle}>Actions</th>
           </tr>
         </thead>
@@ -72,14 +87,13 @@ export default function EmployeesList({ onViewDocuments }) {
               <td style={tdStyle}>{employee.lastName}</td>
               <td style={tdStyle}>{employee.email}</td>
               <td style={tdStyle}>{employee.clinic || "-"}</td>
-              <td style={tdStyle}>{employee.isActive ? "Yes" : "No"}</td>
               <td style={tdStyle}>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <button onClick={() => onViewDocuments(employee)}>
-                    View Documents
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button onClick={() => handleReactivate(employee)}>
+                    Reactivate
                   </button>
-                  <button onClick={() => handleDeactivate(employee)}>
-                    Deactivate
+                  <button onClick={() => handlePermanentDelete(employee)}>
+                    Delete Permanently
                   </button>
                 </div>
               </td>
