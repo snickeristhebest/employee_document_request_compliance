@@ -6,6 +6,8 @@ import RequestsPage from "../../pages/RequestsPage";
 import ViewRequestsPage from "../../pages/ViewRequestsPage";
 import EmployeeDocumentsPage from "../../pages/EmployeeDocumentsPage";
 import ViewRequestPage from "../../pages/ViewRequestpage";
+import InactiveEmployeesPage from "../../pages/InactiveEmployeesPage";
+import AdminPersonalRequestsPage from "../../pages/AdminPersonalRequestsPage";
 
 export default function AdminShell() {
   const [currentPage, setCurrentPage] = useState("employees");
@@ -67,6 +69,9 @@ export default function AdminShell() {
           onBack={handleBackFromViewRequest}
         />
       )}
+
+      {currentPage === "inactiveEmployees" && <InactiveEmployeesPage />}
+      {currentPage === "myRequests" && <AdminPersonalRequestsPage />}
     </div>
   );
 }

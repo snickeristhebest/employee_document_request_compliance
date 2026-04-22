@@ -30,6 +30,18 @@ export default function Navbar({ currentPage, onNavigate }) {
       >
         View Requests
       </button>
+      <button
+        onClick={() => onNavigate("inactiveEmployees")}
+        style={navButtonStyle(currentPage === "inactiveEmployees")}
+      >
+        Inactive Employees
+      </button>
+      <button
+        onClick={() => onNavigate("myRequests")}
+        style={navButtonStyle(currentPage === "myRequests")}
+      >
+        My Requests
+    </button>
     </nav>
   );
 }
