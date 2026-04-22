@@ -1,5 +1,4 @@
 import { useState } from "react";
-import TopBar from "../components/layout/TopBar";
 import MyRequestsList from "../components/employees/MyRequestsList";
 import SubmitRequestPage from "./SubmitRequestPage";
 import { useAuth } from "../context/AuthContext";
@@ -10,33 +9,26 @@ export default function AdminPersonalRequestsPage() {
 
   if (selectedRequest) {
     return (
-      <div>
-        <TopBar />
-        <SubmitRequestPage
-          request={selectedRequest}
-          onBack={() => setSelectedRequest(null)}
-        />
-      </div>
+      <SubmitRequestPage
+        request={selectedRequest}
+        onBack={() => setSelectedRequest(null)}
+      />
     );
   }
 
   return (
-    <div>
-      <TopBar />
+    <div style={{ padding: "2rem" }}>
+      <h1>My Requests</h1>
 
-      <div style={{ padding: "2rem" }}>
-        <h1>My Requests</h1>
+      <p>
+        <strong>Logged in as:</strong> {currentUser?.email}
+      </p>
 
-        <p>
-          <strong>Logged in as:</strong> {currentUser?.email}
-        </p>
+      <p>
+        <strong>Employee ID:</strong> {userProfile?.employeeId}
+      </p>
 
-        <p>
-          <strong>Employee ID:</strong> {userProfile?.employeeId}
-        </p>
-
-        <MyRequestsList onSubmitRequest={setSelectedRequest} />
-      </div>
+      <MyRequestsList onSubmitRequest={setSelectedRequest} />
     </div>
   );
 }

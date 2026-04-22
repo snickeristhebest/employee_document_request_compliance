@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   serverTimestamp,
   query,
@@ -45,7 +46,7 @@ export function subscribeToEmployees(callback, onError) {
   const q = query(
     collection(db, "employees"),
     where("isActive", "==", true),
-    orderBy("createdAt", "desc"),
+    orderBy("createdAt", "desc")
   );
 
   return onSnapshot(
@@ -65,7 +66,7 @@ export function subscribeToInactiveEmployees(callback, onError) {
   const q = query(
     collection(db, "employees"),
     where("isActive", "==", false),
-    orderBy("createdAt", "desc"),
+    orderBy("createdAt", "desc")
   );
 
   return onSnapshot(
@@ -83,20 +84,50 @@ export function subscribeToInactiveEmployees(callback, onError) {
 
 export async function deactivateEmployee(employeeId) {
   const employeeRef = doc(db, "employees", employeeId);
+  const employeeSnap = await getDoc(employeeRef);
+
+  if (!employeeSnap.exists()) {
+    throw new Error("Employee not found.");
+  }
+
+  const employeeData = employeeSnap.data();
 
   await updateDoc(employeeRef, {
     isActive: false,
     updatedAt: serverTimestamp(),
   });
+
+  if (employeeData.authUid) {
+    const userRef = doc(db, "users", employeeData.authUid);
+    await updateDoc(userRef, {
+      isActive: false,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }
 
 export async function reactivateEmployee(employeeId) {
   const employeeRef = doc(db, "employees", employeeId);
+  const employeeSnap = await getDoc(employeeRef);
+
+  if (!employeeSnap.exists()) {
+    throw new Error("Employee not found.");
+  }
+
+  const employeeData = employeeSnap.data();
 
   await updateDoc(employeeRef, {
     isActive: true,
     updatedAt: serverTimestamp(),
   });
+
+  if (employeeData.authUid) {
+    const userRef = doc(db, "users", employeeData.authUid);
+    await updateDoc(userRef, {
+      isActive: true,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }
 
 export async function permanentlyDeleteEmployee(employeeId) {
