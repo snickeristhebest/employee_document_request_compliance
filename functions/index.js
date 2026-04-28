@@ -326,6 +326,8 @@ function buildReminderSubject(request, candidate) {
   return `Reminder for "${request.title}"`;
 }
 
+const APP_URL = "https://employee-document-request-compliance.onrender.com";
+
 function buildReminderBody(request, candidate) {
   const employeeName = request.employeeName || "Employee";
   const targetDate = candidate.targetDate || "N/A";
@@ -340,6 +342,8 @@ function buildReminderBody(request, candidate) {
       `Due date: ${targetDate}`,
       "",
       "Please log in and submit the required document before the due date.",
+      "",
+      `Portal Link: ${APP_URL}`,
     ].join("\n");
   }
 
@@ -351,6 +355,8 @@ function buildReminderBody(request, candidate) {
       `Expiration date: ${targetDate}`,
       "",
       "Please submit an updated document before it expires.",
+      "",
+      `Portal Link: ${APP_URL}`,
     ].join("\n");
   }
 
@@ -358,6 +364,8 @@ function buildReminderBody(request, candidate) {
     `Hello ${employeeName},`,
     "",
     `This is a reminder regarding "${title}".`,
+    "",
+    `Portal Link: ${APP_URL}`,
   ].join("\n");
 }
 
