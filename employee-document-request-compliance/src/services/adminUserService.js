@@ -8,3 +8,16 @@ export async function createEmployeeAccount(data) {
   const result = await callable(data);
   return result.data;
 }
+
+export async function resetEmployeeTemporaryPassword(employeeId) {
+  const resetPasswordCallable = httpsCallable(
+    functions,
+    "resetEmployeeTemporaryPassword"
+  );
+
+  const result = await resetPasswordCallable({
+    employeeId,
+  });
+
+  return result.data;
+}
