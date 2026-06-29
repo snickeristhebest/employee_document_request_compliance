@@ -4,10 +4,15 @@ import {
   deactivateEmployee,
 } from "../../services/employeeService";
 
+import {
+  resetEmployeeTemporaryPassword,
+} from "../../services/adminUserService";
+
 export default function EmployeesList({ onViewDocuments }) {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [resettingEmployeeId, setResettingEmployeeId] = useState("");
 
   useEffect(() => {
     const unsubscribe = subscribeToEmployees(
@@ -37,6 +42,27 @@ export default function EmployeesList({ onViewDocuments }) {
     } catch (err) {
       console.error("Error deactivating employee:", err);
       alert("Failed to deactivate employee.");
+    }
+  };
+
+  const handleSendTemporaryPassword = async (employee) => {
+    const confirmReset = window.confirm(
+      `Generate and email a new temporary password for ${employee.firstName} ${employee.lastName}?`
+    );
+
+    if (!confirmReset) return;
+
+    try {
+      setResettingEmployeeId(employee.id);
+
+      await resetEmployeeTemporaryPassword(employee.id);
+
+      alert(`Temporary password email sent to ${employee.email}.`);
+    } catch (err) {
+      console.error("Error resetting temporary password:", err);
+      alert(err.message || "Failed to send temporary password.");
+    } finally {
+      setResettingEmployeeId("");
     }
   };
 
@@ -80,6 +106,14 @@ export default function EmployeesList({ onViewDocuments }) {
                   </button>
                   <button onClick={() => handleDeactivate(employee)}>
                     Deactivate
+                  </button>
+                  <button
+                    onClick={() => handleSendTemporaryPassword(employee)}
+                    disabled={resettingEmployeeId === employee.id}
+                  >
+                    {resettingEmployeeId === employee.id
+                      ? "Sending..."
+                      : "Send Temp Password"}
                   </button>
                 </div>
               </td>

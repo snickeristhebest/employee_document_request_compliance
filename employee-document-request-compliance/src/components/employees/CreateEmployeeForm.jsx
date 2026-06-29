@@ -6,7 +6,6 @@ export default function CreateEmployeeForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [clinic, setClinic] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState("employee");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -19,15 +18,9 @@ export default function CreateEmployeeForm() {
       !firstName.trim() ||
       !lastName.trim() ||
       !email.trim() ||
-      !password.trim() ||
       !role.trim()
     ) {
-      setMessage("First name, last name, email, password, and role are required.");
-      return;
-    }
-
-    if (password.trim().length < 6) {
-      setMessage("Password must be at least 6 characters.");
+      setMessage("First name, last name, email, and role are required.");
       return;
     }
 
@@ -39,7 +32,6 @@ export default function CreateEmployeeForm() {
         lastName: lastName.trim(),
         email: email.trim(),
         clinic: clinic.trim(),
-        password: password.trim(),
         role,
       });
 
@@ -50,7 +42,6 @@ export default function CreateEmployeeForm() {
       setLastName("");
       setEmail("");
       setClinic("");
-      setPassword("");
       setRole("employee");
     } catch (error) {
       console.error("Create employee account error:", error);
@@ -107,14 +98,6 @@ export default function CreateEmployeeForm() {
           <option value="employee">Employee</option>
           <option value="admin">Admin</option>
         </select>
-
-        <input
-          type="password"
-          placeholder="Temporary password (min 6 chars)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-        />
 
         <button type="submit" disabled={isLoading}>
           {isLoading ? "Creating..." : `Create ${role === "admin" ? "Admin" : "Employee"} Account`}
